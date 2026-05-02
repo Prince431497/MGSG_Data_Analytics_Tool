@@ -193,6 +193,18 @@ body{font-family:system-ui,sans-serif;background:#f4f6fb;min-height:100vh;color:
           <strong>Click to upload or drag &amp; drop</strong>
           <p>Supports CSV files only &bull; Use the template above for correct format</p>
         </div>
+
+        <div id="loadingOverlay" style="display:none;text-align:center;padding:2.5rem 1rem;background:#fff;border-radius:14px;border:1.5px solid #e8eaf6;margin-bottom:1.5rem">
+          <div style="display:inline-block;width:48px;height:48px;border:5px solid #e8eaf6;border-top:5px solid #1a237e;border-radius:50%;animation:spin 0.9s linear infinite;margin-bottom:1rem"></div>
+          <div style="font-size:15px;font-weight:700;color:#1a237e" id="loadingTitle">Analysing your data...</div>
+          <div style="font-size:13px;color:#888;margin-top:6px" id="loadingMsg">Please wait while we run all checks</div>
+          <div style="margin-top:1.25rem;background:#f0f3ff;border-radius:8px;height:8px;width:80%;margin-left:auto;margin-right:auto;overflow:hidden">
+            <div id="loadingBar" style="height:100%;width:0%;background:#1a237e;border-radius:8px;transition:width 0.4s ease"></div>
+          </div>
+          <div style="font-size:12px;color:#aaa;margin-top:8px" id="loadingPct">0%</div>
+        </div>
+        <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
         <div class="results-area" id="resultsArea" style="display:none"></div>
       </div>
     </div>
@@ -269,20 +281,36 @@ function handleDrop(e){
 }
 function handleFile(e){const f=e.target.files[0];if(f)parseCSV(f);}
 
+function showLoading(msg,pct){
+  document.getElementById('loadingOverlay').style.display='block';
+  document.getElementById('resultsArea').style.display='none';
+  document.getElementById('loadingMsg').textContent=msg;
+  document.getElementById('loadingBar').style.width=pct+'%';
+  document.getElementById('loadingPct').textContent=pct+'%';
+}
+function hideLoading(){
+  document.getElementById('loadingOverlay').style.display='none';
+}
+
 function parseCSV(file){
+  showLoading('Reading your file...', 10);
   const reader=new FileReader();
   reader.onload=function(e){
-    const lines=e.target.result.split('\n').map(l=>l.trim()).filter(l=>l);
-    if(lines.length<2){alert('File appears empty.');return;}
-    const headers=lines[0].split(',').map(h=>h.trim());
-    const rows=[];
-    for(let i=1;i<lines.length;i++){
-      const vals=lines[i].split(',').map(v=>v.trim());
-      const obj={};
-      headers.forEach((h,idx)=>obj[h]=vals[idx]||'');
-      rows.push(obj);
-    }
-    analyseData(rows);
+    showLoading('Parsing rows and columns...', 25);
+    setTimeout(()=>{
+      const lines=e.target.result.split('\n').map(l=>l.trim()).filter(l=>l);
+      if(lines.length<2){hideLoading();alert('File appears empty.');return;}
+      const headers=lines[0].split(',').map(h=>h.trim());
+      const rows=[];
+      for(let i=1;i<lines.length;i++){
+        const vals=lines[i].split(',').map(v=>v.trim());
+        const obj={};
+        headers.forEach((h,idx)=>obj[h]=vals[idx]||'');
+        rows.push(obj);
+      }
+      showLoading('Running Employee ID checks...', 40);
+      setTimeout(()=>analyseData(rows), 300);
+    },200);
   };
   reader.readAsText(file);
 }
@@ -364,81 +392,60 @@ function analyseData(rows){
 
   _lastResults={rows,total,active,inactive,totalFlags,dupEmpID,missingEmpID,seqGaps,panDup,panMissing,panInvalid,aadhaarDup,aadhaarMissing,aadhaarInvalid,bankMissing,bankDup,ifscMissing,ifscInvalid,bankNameMissing,emailMissing,emailInvalid,mobileMissing,mobileInvalid,pfMissing,esiMissing,underage,ageGroups,mismatch,longTenure,recentJoin,incompleteRows,desigMap};
 
-  renderResults(_lastResults);
+  showLoading('Finalising report...', 95);
+  setTimeout(()=>{
+    hideLoading();
+    renderSummary(_lastResults);
+  },300);
 }
 
-function renderResults(R){
+function renderSummary(R){
   const res=document.getElementById('resultsArea');
   res.style.display='';
+  res.innerHTML=`
+    <div style="background:#fff;border-radius:14px;border:1.5px solid #e8eaf6;padding:1.5rem;margin-bottom:1rem">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.25rem">
+        <div style="width:36px;height:36px;background:#e8f5e9;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px">✅</div>
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#1a237e">Analysis Complete</div>
+          <div style="font-size:12px;color:#888">${R.total} employee records processed &bull; ${R.totalFlags} exceptions found</div>
+        </div>
+      </div>
+      <div class="kpi-grid" style="margin-bottom:1.25rem">
+        <div class="kpi-card"><div class="val">${R.total}</div><div class="lbl">Total Employees</div></div>
+        <div class="kpi-card ok"><div class="val">${R.active}</div><div class="lbl">Active</div></div>
+        <div class="kpi-card warn"><div class="val">${R.inactive}</div><div class="lbl">Inactive</div></div>
+        <div class="kpi-card danger"><div class="val">${R.totalFlags}</div><div class="lbl">Total Flags</div></div>
+      </div>
+      <div style="background:#f4f6fb;border-radius:10px;padding:1rem;margin-bottom:1.25rem">
+        <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:10px">Exception Summary</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px">
+          ${summaryRow('Duplicate / Missing Emp ID', R.dupEmpID.length + R.missingEmpID.length)}
+          ${summaryRow('PAN Issues', R.panMissing.length + R.panInvalid.length + R.panDup.length)}
+          ${summaryRow('Aadhaar Issues', R.aadhaarMissing.length + R.aadhaarInvalid.length + R.aadhaarDup.length)}
+          ${summaryRow('Bank Detail Issues', R.bankMissing.length + R.bankDup.length + R.ifscMissing.length + R.ifscInvalid.length + R.bankNameMissing.length)}
+          ${summaryRow('Contact Issues', R.emailMissing.length + R.emailInvalid.length + R.mobileMissing.length + R.mobileInvalid.length)}
+          ${summaryRow('Compliance (PF / ESI)', R.pfMissing.length + R.esiMissing.length)}
+          ${summaryRow('Underage Employees', R.underage.length, true)}
+          ${summaryRow('Status Mismatch', R.mismatch.length)}
+          ${summaryRow('Incomplete Records', R.incompleteRows.length)}
+        </div>
+      </div>
+      <div style="font-size:13px;color:#555;margin-bottom:12px;font-weight:600">Download detailed exception report:</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <button class="btn-excel" onclick="exportExcel()">&#128196; Download Excel Report</button>
+        <button class="btn-pdf" onclick="exportPDF()">&#128196; Download PDF Report</button>
+      </div>
+    </div>`;
+}
 
-  let html=`<div class="export-bar">
-    <span>&#11015; Export Results:</span>
-    <button class="btn-excel" onclick="exportExcel()">&#128196; Download Excel Report</button>
-    <button class="btn-pdf" onclick="exportPDF()">&#128196; Download PDF Report</button>
+function summaryRow(label, count, critical=false){
+  const color = count===0 ? '#2e7d32' : critical && count>0 ? '#c62828' : count>0 ? '#e65100' : '#2e7d32';
+  const bg = count===0 ? '#e8f5e9' : critical && count>0 ? '#ffebee' : count>0 ? '#fff3e0' : '#e8f5e9';
+  return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:4px 0;border-bottom:1px solid #eee">
+    <span style="color:#555">${label}</span>
+    <span style="font-weight:700;color:${color};background:${bg};padding:2px 8px;border-radius:20px">${count}</span>
   </div>`;
-
-  html+=`<div class="kpi-grid">
-    <div class="kpi-card"><div class="val">${R.total}</div><div class="lbl">Total Employees</div></div>
-    <div class="kpi-card ok"><div class="val">${R.active}</div><div class="lbl">Active</div></div>
-    <div class="kpi-card warn"><div class="val">${R.inactive}</div><div class="lbl">Inactive</div></div>
-    <div class="kpi-card danger"><div class="val">${R.totalFlags}</div><div class="lbl">Total Flags</div></div>
-  </div>`;
-
-  html+=section('Employee ID Analysis');
-  html+=flagTable('Duplicate Employee IDs',R.dupEmpID.length>0?R.dupEmpID.map(id=>[id,R.rows.filter(r=>r['Employee ID']===id).map(r=>r['Name']).join(', '),'red']):null,['Employee ID','Names'],'No duplicate Employee IDs found.');
-  html+=flagTable('Missing in Sequence',R.seqGaps.length>0?R.seqGaps.map(g=>['EMP'+String(g).padStart(3,'0'),'Gap in sequence','orange']):null,['Missing ID','Note'],'No sequence gaps found.');
-
-  html+=section('PAN Analysis');
-  html+=flagTable('Duplicate PAN',R.panDup,['Employee ID','Name','PAN'],'No duplicate PANs found.');
-  html+=flagTable('Missing PAN',R.panMissing.map(r=>[r['Employee ID'],r['Name'],'red']),['Employee ID','Name'],'All employees have PAN.');
-  html+=flagTable('Invalid PAN Format',R.panInvalid.map(r=>[r['Employee ID'],r['Name'],r['PAN'],'orange']),['Employee ID','Name','PAN Value'],'All PAN numbers are valid.');
-
-  html+=section('Aadhaar Analysis');
-  html+=flagTable('Duplicate Aadhaar',R.aadhaarDup,['Employee ID','Name','Aadhaar'],'No duplicate Aadhaar found.');
-  html+=flagTable('Missing Aadhaar',R.aadhaarMissing.map(r=>[r['Employee ID'],r['Name'],'red']),['Employee ID','Name'],'All employees have Aadhaar.');
-  html+=flagTable('Invalid Aadhaar (not 12 digits)',R.aadhaarInvalid.map(r=>[r['Employee ID'],r['Name'],r['Aadhaar'],'orange']),['Employee ID','Name','Aadhaar Value'],'All Aadhaar numbers are valid.');
-
-  html+=section('Bank Details Analysis');
-  html+=flagTable('Missing Bank Account',R.bankMissing.map(r=>[r['Employee ID'],r['Name'],'red']),['Employee ID','Name'],'All employees have bank accounts.');
-  html+=flagTable('Duplicate Bank Account',R.bankDup,['Employee ID','Name','Bank Account'],'No duplicate bank accounts found.');
-  html+=flagTable('Missing IFSC Code',R.ifscMissing.map(r=>[r['Employee ID'],r['Name'],'orange']),['Employee ID','Name'],'All IFSC codes present.');
-  html+=flagTable('Invalid IFSC Format',R.ifscInvalid.map(r=>[r['Employee ID'],r['Name'],r['Bank IFSC Code'],'orange']),['Employee ID','Name','IFSC'],'All IFSC codes are valid.');
-  html+=flagTable('Missing Bank Name',R.bankNameMissing.map(r=>[r['Employee ID'],r['Name'],'orange']),['Employee ID','Name'],'All bank names present.');
-
-  html+=section('Contact Details Analysis');
-  html+=flagTable('Missing Email ID',R.emailMissing.map(r=>[r['Employee ID'],r['Name'],'red']),['Employee ID','Name'],'All employees have email.');
-  html+=flagTable('Invalid Email Format',R.emailInvalid.map(r=>[r['Employee ID'],r['Name'],r['Personal Email ID'],'orange']),['Employee ID','Name','Email'],'All email formats are valid.');
-  html+=flagTable('Missing Mobile Number',R.mobileMissing.map(r=>[r['Employee ID'],r['Name'],'red']),['Employee ID','Name'],'All employees have mobile numbers.');
-  html+=flagTable('Invalid Mobile Number',R.mobileInvalid.map(r=>[r['Employee ID'],r['Name'],r['Personal Mobile Number'],'orange']),['Employee ID','Name','Mobile'],'All mobile numbers are valid.');
-
-  html+=section('Statutory Compliance Checks');
-  html+=flagTable('Missing PF Deduction Number',R.pfMissing.map(r=>[r['Employee ID'],r['Name'],'red']),['Employee ID','Name'],'All PF numbers present.');
-  html+=flagTable('Missing ESI Deduction',R.esiMissing.map(r=>[r['Employee ID'],r['Name'],'orange']),['Employee ID','Name'],'All ESI details present.');
-
-  html+=section('Age & Date of Birth Analysis');
-  html+=flagTable('Underage Employees (below 18)',R.underage.map(r=>[r.id,r.name,r.dob,r.age+' yrs','red']),['Employee ID','Name','DOB','Age'],'No underage employees found.');
-  if(Object.values(R.ageGroups).some(v=>v>0)){
-    html+='<p style="font-size:13px;font-weight:600;color:#333;margin:8px 0 4px">Age Distribution</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">';
-    Object.entries(R.ageGroups).forEach(([g,c])=>{html+=`<div class="kpi-card" style="min-width:100px"><div class="val" style="font-size:20px">${c}</div><div class="lbl">${g} yrs</div></div>`;});
-    html+='</div>';
-  }
-
-  html+=section('Status & Separation Analysis');
-  html+=flagTable('Active Status with Separation Date (Mismatch)',R.mismatch.map(r=>[r['Employee ID'],r['Name'],r['Date of Separation'],'orange']),['Employee ID','Name','Sep Date'],'No status mismatches found.');
-
-  html+=section('Tenure Analysis');
-  html+=flagTable('Long Tenure Employees (10+ years)',R.longTenure.map(r=>[r.id,r.name,r.doj,r.years+' yrs','blue']),['Employee ID','Name','DOJ','Tenure'],'No employees with 10+ years tenure.');
-  html+=flagTable('Recently Joined (last 90 days)',R.recentJoin.map(r=>[r.id,r.name,r.doj,'blue']),['Employee ID','Name','DOJ'],'No recent joiners.');
-
-  html+=section('Designation-wise Headcount');
-  html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">';
-  Object.entries(R.desigMap).forEach(([d,c])=>{html+=`<div class="kpi-card" style="min-width:120px"><div class="val" style="font-size:20px">${c}</div><div class="lbl">${d}</div></div>`;});
-  html+='</div>';
-
-  html+=section('Record Completeness (Bottom 10)');
-  html+=flagTable('',R.incompleteRows.map(r=>[r.id,r.name,r.pct+'%',r.pct<50?'red':'orange']),['Employee ID','Name','Completeness %'],'All records are 100% complete.');
-
-  res.innerHTML=html;
 }
 
 function exportExcel(){

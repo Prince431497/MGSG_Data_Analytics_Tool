@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MGSG Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f4f6fb;min-height:100vh;color:#222}
+.screen{display:none}.screen.active{display:flex}
+#loginScreen{min-height:100vh;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a237e 0%,#283593 60%,#3949ab 100%)}
+.login-card{background:#fff;border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:380px;box-shadow:0 8px 40px rgba(0,0,0,0.18)}
+.login-logo{text-align:center;margin-bottom:1.5rem}
+.login-logo .logo-icon{width:56px;height:56px;background:#1a237e;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:0.75rem}
+.login-logo .logo-icon svg{width:30px;height:30px;fill:#fff}
+.login-logo h1{font-size:20px;font-weight:700;color:#1a237e}
+.login-logo p{font-size:13px;color:#888;margin-top:4px}
+.form-group{margin-bottom:1rem}
+.form-group label{display:block;font-size:13px;font-weight:600;color:#444;margin-bottom:6px}
+.form-group input{width:100%;padding:10px 14px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;outline:none;transition:border 0.2s}
+.form-group input:focus{border-color:#1a237e}
+.login-btn{width:100%;padding:11px;background:#1a237e;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;margin-top:0.5rem}
+.login-btn:hover{background:#283593}
+.error-msg{color:#c62828;font-size:13px;margin-top:8px;text-align:center;min-height:18px}
+#mainScreen{flex-direction:column;min-height:100vh}
+.topbar{background:#1a237e;color:#fff;padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.topbar-left .brand{font-size:16px;font-weight:700}
+.topbar-left .module-path{font-size:13px;opacity:0.7}
+.logout-btn{background:rgba(255,255,255,0.15);border:none;color:#fff;padding:6px 14px;border-radius:6px;font-size:13px;cursor:pointer}
+.logout-btn:hover{background:rgba(255,255,255,0.25)}
+.main-content{flex:1;padding:2rem}
+#dashboardView h2{font-size:22px;font-weight:700;color:#1a237e;margin-bottom:6px}
+.subtitle{font-size:14px;color:#666;margin-bottom:2rem}
+.module-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.25rem}
+.module-card{background:#fff;border-radius:14px;padding:1.75rem 1.5rem;cursor:pointer;border:2px solid transparent;transition:all 0.2s;box-shadow:0 2px 12px rgba(0,0,0,0.07)}
+.module-card:hover{border-color:#1a237e;transform:translateY(-2px);box-shadow:0 6px 24px rgba(26,35,126,0.13)}
+.module-card .icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;font-size:22px}
+.module-card h3{font-size:16px;font-weight:700;color:#1a237e;margin-bottom:6px}
+.module-card p{font-size:13px;color:#777;line-height:1.5}
+.card-hr .icon{background:#e8eaf6}.card-proc .icon{background:#e0f2f1}.card-fin .icon{background:#fff8e1}.card-inv .icon{background:#fce4ec}
+.coming-soon{font-size:11px;background:#f3f3f3;color:#aaa;padding:3px 8px;border-radius:20px;display:inline-block;margin-top:8px}
+#h2rView .back-btn{background:none;border:none;color:#1a237e;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:1.25rem;display:flex;align-items:center;gap:6px;padding:0}
+#h2rView h2{font-size:20px;font-weight:700;color:#1a237e;margin-bottom:4px}
+.sub-module-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:2rem}
+.sub-card{background:#fff;border-radius:12px;padding:1.25rem;cursor:pointer;border:2px solid transparent;transition:all 0.2s;box-shadow:0 1px 8px rgba(0,0,0,0.06)}
+.sub-card:hover,.sub-card.active{border-color:#1a237e;background:#f0f3ff}
+.sub-card h4{font-size:14px;font-weight:700;color:#1a237e}
+.sub-card p{font-size:12px;color:#888;margin-top:4px}
+#empMasterView{background:#fff;border-radius:14px;padding:1.5rem;box-shadow:0 2px 12px rgba(0,0,0,0.07)}
+#empMasterView h3{font-size:17px;font-weight:700;color:#1a237e;margin-bottom:4px}
+#empMasterView .desc{font-size:13px;color:#777;margin-bottom:1.25rem}
+.action-row{display:flex;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center}
+.btn-outline{padding:9px 18px;border:2px solid #1a237e;color:#1a237e;background:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s}
+.btn-outline:hover{background:#1a237e;color:#fff}
+.btn-primary{padding:9px 18px;background:#1a237e;color:#fff;border:2px solid #1a237e;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+.btn-primary:hover{background:#283593}
+.btn-excel{padding:9px 18px;background:#1b5e20;color:#fff;border:2px solid #1b5e20;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+.btn-excel:hover{background:#2e7d32}
+.btn-pdf{padding:9px 18px;background:#b71c1c;color:#fff;border:2px solid #b71c1c;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+.btn-pdf:hover{background:#c62828}
+.upload-zone{border:2px dashed #b0bec5;border-radius:10px;padding:2rem;text-align:center;cursor:pointer;transition:border 0.2s;margin-bottom:1.5rem}
+.upload-zone:hover,.upload-zone.dragover{border-color:#1a237e;background:#f0f3ff}
+.upload-zone p{font-size:13px;color:#888;margin-top:6px}
+.upload-zone .icon{font-size:28px}
+#fileInput{display:none}
+.results-area{margin-top:1rem}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:1.5rem}
+.kpi-card{background:#f4f6fb;border-radius:10px;padding:1rem;text-align:center}
+.kpi-card .val{font-size:26px;font-weight:700;color:#1a237e}
+.kpi-card .lbl{font-size:11px;color:#888;margin-top:4px}
+.kpi-card.warn .val{color:#e65100}.kpi-card.danger .val{color:#c62828}.kpi-card.ok .val{color:#2e7d32}
+.section-title{font-size:14px;font-weight:700;color:#333;margin:1.25rem 0 0.5rem;padding-bottom:6px;border-bottom:2px solid #e8eaf6}
+.flag-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:1rem}
+.flag-table th{background:#e8eaf6;color:#1a237e;padding:7px 10px;text-align:left;font-weight:700}
+.flag-table td{padding:6px 10px;border-bottom:1px solid #f0f0f0;color:#333}
+.flag-table tr:hover td{background:#f9f9ff}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.badge.red{background:#ffebee;color:#c62828}.badge.orange{background:#fff3e0;color:#e65100}.badge.green{background:#e8f5e9;color:#2e7d32}.badge.blue{background:#e3f2fd;color:#1565c0}
+.no-issues{font-size:13px;color:#2e7d32;padding:10px;background:#e8f5e9;border-radius:8px;margin-bottom:8px}
+.export-bar{display:flex;gap:10px;align-items:center;background:#f0f3ff;border-radius:10px;padding:12px 16px;margin-bottom:1.5rem;flex-wrap:wrap}
+.export-bar span{font-size:13px;font-weight:600;color:#1a237e;margin-right:4px}
+</style>
+</head>
+<body>
+
+<div id="loginScreen" class="screen active">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+      </div>
+      <h1>MGSG Analytics</h1>
+      <p>Enterprise Analytics Platform</p>
+    </div>
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="username" placeholder="Enter username" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="password" placeholder="Enter password">
+    </div>
+    <div class="error-msg" id="loginError"></div>
+    <button class="login-btn" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<div id="mainScreen" class="screen">
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="brand">MGSG Analytics</span>
+      <span class="module-path" id="breadcrumb"></span>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">Sign Out</button>
+  </div>
+  <div class="main-content">
+
+    <div id="dashboardView">
+      <h2>Analytics Dashboard</h2>
+      <p class="subtitle">Select a module to begin analysis</p>
+      <div class="module-grid">
+        <div class="module-card card-hr" onclick="showH2R()">
+          <div class="icon">👥</div>
+          <h3>Hire to Retire</h3>
+          <p>Employee lifecycle analytics — master data, compliance, attrition & workforce insights.</p>
+        </div>
+        <div class="module-card card-proc">
+          <div class="icon">🛒</div>
+          <h3>Procurement to Pay</h3>
+          <p>Purchase orders, vendor management, invoice processing and payment analytics.</p>
+          <span class="coming-soon">Coming soon</span>
+        </div>
+        <div class="module-card card-fin">
+          <div class="icon">💰</div>
+          <h3>Finance &amp; Accounts</h3>
+          <p>Revenue, expenses, P&amp;L, cash flow and budget vs actuals analysis.</p>
+          <span class="coming-soon">Coming soon</span>
+        </div>
+        <div class="module-card card-inv">
+          <div class="icon">📦</div>
+          <h3>Inventory Management</h3>
+          <p>Stock levels, turnover, reorder points and warehouse tracking analytics.</p>
+          <span class="coming-soon">Coming soon</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="h2rView" style="display:none">
+      <button class="back-btn" onclick="showDashboard()">&#8592; Back to Dashboard</button>
+      <h2>Hire to Retire</h2>
+      <p class="subtitle">HR lifecycle analytics and employee data analysis</p>
+      <div class="sub-module-grid">
+        <div class="sub-card active" onclick="showEmpMaster()">
+          <h4>Employee Master</h4>
+          <p>Upload &amp; analyse employee master data</p>
+        </div>
+        <div class="sub-card" style="opacity:0.5;cursor:default"><h4>Payroll Analysis</h4><p>Coming soon</p></div>
+        <div class="sub-card" style="opacity:0.5;cursor:default"><h4>Attrition Analysis</h4><p>Coming soon</p></div>
+        <div class="sub-card" style="opacity:0.5;cursor:default"><h4>Leave Management</h4><p>Coming soon</p></div>
+      </div>
+
+      <div id="empMasterView" style="display:none">
+        <h3>Employee Master Analysis</h3>
+        <p class="desc">Download the standard template, fill in your employee data, and upload for automated analysis.</p>
+        <div class="action-row">
+          <button class="btn-outline" onclick="downloadTemplate()">&#11015; Download CSV Template</button>
+          <button class="btn-primary" onclick="document.getElementById('fileInput').click()">&#11014; Upload Employee Data</button>
+          <input type="file" id="fileInput" accept=".csv" onchange="handleFile(event)">
+        </div>
+        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()"
+          ondragover="event.preventDefault();this.classList.add('dragover')"
+          ondragleave="this.classList.remove('dragover')"
+          ondrop="handleDrop(event)">
+          <div class="icon">📂</div>
+          <strong>Click to upload or drag &amp; drop</strong>
+          <p>Supports CSV files only &bull; Use the template above for correct format</p>
+        </div>
+        <div class="results-area" id="resultsArea" style="display:none"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const CREDS={username:'admin',password:'admin@123'};
+const COLS=['Employee ID','Name','Designation','Educational Qualification','PAN','Aadhaar','Bank Account','Bank IFSC Code','Bank Name','Personal Email ID','Personal Mobile Number','PF Deduction Number','ESI Deduction','Active/Inactive Status','Date of Joining','Date of Separation','Date of Birth'];
+
+let _lastResults=null;
+
+function doLogin(){
+  const u=document.getElementById('username').value.trim();
+  const p=document.getElementById('password').value;
+  const err=document.getElementById('loginError');
+  if(u===CREDS.username&&p===CREDS.password){
+    document.getElementById('loginScreen').classList.remove('active');
+    document.getElementById('mainScreen').classList.add('active');
+    err.textContent='';
+  }else{err.textContent='Invalid credentials, please try again.';}
+}
+document.getElementById('password').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+
+function doLogout(){
+  document.getElementById('mainScreen').classList.remove('active');
+  document.getElementById('loginScreen').classList.add('active');
+  document.getElementById('username').value='';
+  document.getElementById('password').value='';
+  showDashboard();
+  document.getElementById('resultsArea').style.display='none';
+  document.getElementById('resultsArea').innerHTML='';
+  _lastResults=null;
+}
+
+function showDashboard(){
+  document.getElementById('dashboardView').style.display='';
+  document.getElementById('h2rView').style.display='none';
+  document.getElementById('breadcrumb').textContent='';
+}
+function showH2R(){
+  document.getElementById('dashboardView').style.display='none';
+  document.getElementById('h2rView').style.display='';
+  document.getElementById('empMasterView').style.display='none';
+  document.getElementById('breadcrumb').textContent='/ Hire to Retire';
+}
+function showEmpMaster(){
+  document.getElementById('empMasterView').style.display='';
+  document.getElementById('breadcrumb').textContent='/ Hire to Retire / Employee Master';
+}
+
+function downloadTemplate(){
+  const header=COLS.join(',');
+  const sample=[
+    'EMP001,John Doe,Manager,MBA,ABCPD1234E,123456789012,9876543210,HDFC0001234,HDFC Bank,john@gmail.com,9876543210,PF123456,ESI12345,Active,01-04-2020,,15-06-1988',
+    'EMP002,Jane Smith,Analyst,B.Com,XYZPS5678F,234567890123,8765432109,ICIC0002345,ICICI Bank,jane@gmail.com,8765432109,PF234567,ESI23456,Active,15-06-2021,,22-09-1995'
+  ];
+  const csv=header+'\n'+sample.join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='MGSG_Employee_Master_Template.csv';
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);URL.revokeObjectURL(url);
+}
+
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('dragover');
+  const f=e.dataTransfer.files[0];
+  if(f&&f.name.endsWith('.csv'))parseCSV(f);
+  else alert('Please upload a CSV file.');
+}
+function handleFile(e){const f=e.target.files[0];if(f)parseCSV(f);}
+
+function parseCSV(file){
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const lines=e.target.result.split('\n').map(l=>l.trim()).filter(l=>l);
+    if(lines.length<2){alert('File appears empty.');return;}
+    const headers=lines[0].split(',').map(h=>h.trim());
+    const rows=[];
+    for(let i=1;i<lines.length;i++){
+      const vals=lines[i].split(',').map(v=>v.trim());
+      const obj={};
+      headers.forEach((h,idx)=>obj[h]=vals[idx]||'');
+      rows.push(obj);
+    }
+    analyseData(rows);
+  };
+  reader.readAsText(file);
+}
+
+function analyseData(rows){
+  const today=new Date();
+  const v=k=>rows.map(r=>r[k]||'');
+  const isEmpty=s=>!s||s.trim()==='';
+
+  const total=rows.length;
+  const active=rows.filter(r=>(r['Active/Inactive Status']||'').toLowerCase()==='active').length;
+  const inactive=total-active;
+
+  const empIDs=v('Employee ID');
+  const dupEmpID=findDuplicates(empIDs);
+  const missingEmpID=rows.filter(r=>isEmpty(r['Employee ID']));
+  const numericIDs=empIDs.filter(id=>id).map(id=>parseInt(id.replace(/\D/g,''))).filter(n=>!isNaN(n)).sort((a,b)=>a-b);
+  const seqGaps=[];
+  for(let i=1;i<numericIDs.length;i++){if(numericIDs[i]-numericIDs[i-1]>1){for(let g=numericIDs[i-1]+1;g<numericIDs[i];g++)seqGaps.push(g);}}
+
+  const panDup=findDuplicatesWithRows(rows,'PAN','Employee ID');
+  const panMissing=rows.filter(r=>isEmpty(r['PAN']));
+  const panInvalid=rows.filter(r=>{const p=(r['PAN']||'').trim();if(!p)return false;if(p.length!==10)return true;if(p[3].toUpperCase()!=='P')return true;if(!/^[A-Z]{5}[0-9]{4}[A-Z]$/i.test(p))return true;return false;});
+
+  const aadhaarDup=findDuplicatesWithRows(rows,'Aadhaar','Employee ID');
+  const aadhaarMissing=rows.filter(r=>isEmpty(r['Aadhaar']));
+  const aadhaarInvalid=rows.filter(r=>{const a=(r['Aadhaar']||'').replace(/\s/g,'');return a&&!/^\d{12}$/.test(a);});
+
+  const bankMissing=rows.filter(r=>isEmpty(r['Bank Account']));
+  const bankDup=findDuplicatesWithRows(rows,'Bank Account','Employee ID');
+  const ifscMissing=rows.filter(r=>isEmpty(r['Bank IFSC Code']));
+  const ifscInvalid=rows.filter(r=>{const c=(r['Bank IFSC Code']||'').trim();return c&&(c.length!==11||!/^[A-Z]{4}0/i.test(c));});
+  const bankNameMissing=rows.filter(r=>isEmpty(r['Bank Name']));
+
+  const emailMissing=rows.filter(r=>isEmpty(r['Personal Email ID']));
+  const emailInvalid=rows.filter(r=>{const e=(r['Personal Email ID']||'').trim();return e&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);});
+  const mobileMissing=rows.filter(r=>isEmpty(r['Personal Mobile Number']));
+  const mobileInvalid=rows.filter(r=>{const m=(r['Personal Mobile Number']||'').replace(/\s/g,'');return m&&(!/^\d{10}$/.test(m)||!/^[6-9]/.test(m));});
+
+  const pfMissing=rows.filter(r=>isEmpty(r['PF Deduction Number']));
+  const esiMissing=rows.filter(r=>isEmpty(r['ESI Deduction']));
+
+  const underage=[];const ageGroups={'18-25':0,'26-35':0,'36-45':0,'46-55':0,'55+':0};
+  rows.forEach(r=>{
+    const dob=parseDate(r['Date of Birth']);
+    if(dob){
+      const age=calcAge(dob,today);r._age=age;
+      if(age<18)underage.push({id:r['Employee ID'],name:r['Name'],dob:r['Date of Birth'],age});
+      if(age>=18&&age<=25)ageGroups['18-25']++;
+      else if(age<=35)ageGroups['26-35']++;
+      else if(age<=45)ageGroups['36-45']++;
+      else if(age<=55)ageGroups['46-55']++;
+      else if(age>55)ageGroups['55+']++;
+    }
+  });
+
+  const mismatch=rows.filter(r=>{const sep=r['Date of Separation']||'';const status=(r['Active/Inactive Status']||'').toLowerCase();return sep.trim()!==''&&status==='active';});
+
+  const longTenure=[];const recentJoin=[];
+  rows.forEach(r=>{
+    const doj=parseDate(r['Date of Joining']);
+    if(doj){
+      const months=(today-doj)/(1000*60*60*24*30);r._tenureMonths=Math.round(months);
+      if(months>=120)longTenure.push({id:r['Employee ID'],name:r['Name'],doj:r['Date of Joining'],years:(months/12).toFixed(1)});
+      if(months<=3)recentJoin.push({id:r['Employee ID'],name:r['Name'],doj:r['Date of Joining']});
+    }
+  });
+
+  const incompleteRows=rows.map(r=>{
+    const filled=COLS.filter(c=>!isEmpty(r[c])).length;
+    const pct=Math.round((filled/COLS.length)*100);
+    return{id:r['Employee ID'],name:r['Name'],pct};
+  }).filter(r=>r.pct<100).sort((a,b)=>a.pct-b.pct).slice(0,10);
+
+  const desigMap={};
+  rows.forEach(r=>{const d=r['Designation']||'Not specified';desigMap[d]=(desigMap[d]||0)+1;});
+
+  const totalFlags=countIssues([dupEmpID,panMissing,panInvalid,aadhaarMissing,aadhaarInvalid,bankMissing,bankDup,emailMissing,mobileMissing,pfMissing,esiMissing,underage,mismatch]);
+
+  _lastResults={rows,total,active,inactive,totalFlags,dupEmpID,missingEmpID,seqGaps,panDup,panMissing,panInvalid,aadhaarDup,aadhaarMissing,aadhaarInvalid,bankMissing,bankDup,ifscMissing,ifscInvalid,bankNameMissing,emailMissing,emailInvalid,mobileMissing,mobileInvalid,pfMissing,esiMissing,underage,ageGroups,mismatch,longTenure,recentJoin,incompleteRows,desigMap};
+
+  renderResults(_lastResults);
+}
+
+function renderResults(R){
+  const res=document.getElementById('resultsArea');
+  res.style.display='';
+
+  let html=`<div class="export-bar">
+    <span>&#11015; Export Results:</span>
+    <button class="btn-excel" onclick="exportExcel()">&#128196; Download Excel Report</button>
+    <button class="btn-pdf" onclick="exportPDF()">&#128196; Download PDF Report</button>
+  </div>`;
+
+  html+=`<div class="kpi-grid">
+    <div class="kpi-card"><div class="val">${R.total}</div><div class="lbl">Total Employees</div></div>
+    <div class="kpi-card ok"><div class="val">${R.active}</div><div class="lbl">Active</div></div>
+    <div class="kpi-card warn"><div class="val">${R.inactive}</div><div class="lbl">Inactive</div></div>
+    <div class="kpi-card danger"><div class="val">${R.totalFlags}</div><div class="lbl">Total Flags</div></div>
+  </div>`;
+
+  html+=section('Employee ID Analysis');
+  html+=flagTable('Duplicate Employee IDs',R.dupEmpID.length>0?R.dupEmpID.map(id=>[id,R.rows.filter(r=>r['Employee ID']===id).map(r=>r['Name']).join(', '),'red']):null,['Employee ID','Names'],'No duplicate Employee IDs found.');
+  html+=flagTable('Missing in Sequence',R.seqGaps.length>0?R.seqGaps.map(g=>['EMP'+String(g).padStart(3,'0'),'Gap in sequence','orange']):null,['Missing ID','Note'],'No sequence gaps found.');
+
+  html+=section('PAN Analysis');
+  html+=flagTable('Duplicate PAN',R.panDup,['Employee ID','Name','PAN'],'No duplicate PANs found.');
+  html+=flagTable('Missing PAN',R.panMissing.map(r=>[r['Employee ID'],r['Name'],'red']),['Employee ID','Name'],'All employees have PAN.');
+  html+=flagTable('Invalid PAN Format',R.panInvalid.map(r=>[r['Employee ID'],r['Name'],r['PAN'],'orange']),['Employee ID','Name','PAN Value'],'All PAN numbers are valid.');
+
+  html+=section('Aadhaar Analysis');
+  html+=flagTable('Duplicate Aadhaar',R.aadhaarDup,['Employee ID','Name','Aadhaar'],'No duplicate Aadhaar found.');
+  html+=flagTable('Missing Aadhaar',R.aadhaarMissing.map(r=>[r['Employee ID'],r['Name'],'red']),['Employee ID','Name'],'All employees have Aadhaar.');
+  html+=flagTable('Invalid Aadhaar (not 12 digits)',R.aadhaarInvalid.map(r=>[r['Employee ID'],r['Name'],r['Aadhaar'],'orange']),['Employee ID','Name','Aadhaar Value'],'All Aadhaar numbers are valid.');
+
+  html+=section('Bank Details Analysis');
+  html+=flagTable('Missing Bank Account',R.bankMissing.map(r=>[r['Employee ID'],r['Name'],'red']),['Employee ID','Name'],'All employees have bank accounts.');
+  html+=flagTable('Duplicate Bank Account',R.bankDup,['Employee ID','Name','Bank Account'],'No duplicate bank accounts found.');
+  html+=flagTable('Missing IFSC Code',R.ifscMissing.map(r=>[r['Employee ID'],r['Name'],'orange']),['Employee ID','Name'],'All IFSC codes present.');
+  html+=flagTable('Invalid IFSC Format',R.ifscInvalid.map(r=>[r['Employee ID'],r['Name'],r['Bank IFSC Code'],'orange']),['Employee ID','Name','IFSC'],'All IFSC codes are valid.');
+  html+=flagTable('Missing Bank Name',R.bankNameMissing.map(r=>[r['Employee ID'],r['Name'],'orange']),['Employee ID','Name'],'All bank names present.');
+
+  html+=section('Contact Details Analysis');
+  html+=flagTable('Missing Email ID',R.emailMissing.map(r=>[r['Employee ID'],r['Name'],'red']),['Employee ID','Name'],'All employees have email.');
+  html+=flagTable('Invalid Email Format',R.emailInvalid.map(r=>[r['Employee ID'],r['Name'],r['Personal Email ID'],'orange']),['Employee ID','Name','Email'],'All email formats are valid.');
+  html+=flagTable('Missing Mobile Number',R.mobileMissing.map(r=>[r['Employee ID'],r['Name'],'red']),['Employee ID','Name'],'All employees have mobile numbers.');
+  html+=flagTable('Invalid Mobile Number',R.mobileInvalid.map(r=>[r['Employee ID'],r['Name'],r['Personal Mobile Number'],'orange']),['Employee ID','Name','Mobile'],'All mobile numbers are valid.');
+
+  html+=section('Statutory Compliance Checks');
+  html+=flagTable('Missing PF Deduction Number',R.pfMissing.map(r=>[r['Employee ID'],r['Name'],'red']),['Employee ID','Name'],'All PF numbers present.');
+  html+=flagTable('Missing ESI Deduction',R.esiMissing.map(r=>[r['Employee ID'],r['Name'],'orange']),['Employee ID','Name'],'All ESI details present.');
+
+  html+=section('Age & Date of Birth Analysis');
+  html+=flagTable('Underage Employees (below 18)',R.underage.map(r=>[r.id,r.name,r.dob,r.age+' yrs','red']),['Employee ID','Name','DOB','Age'],'No underage employees found.');
+  if(Object.values(R.ageGroups).some(v=>v>0)){
+    html+='<p style="font-size:13px;font-weight:600;color:#333;margin:8px 0 4px">Age Distribution</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">';
+    Object.entries(R.ageGroups).forEach(([g,c])=>{html+=`<div class="kpi-card" style="min-width:100px"><div class="val" style="font-size:20px">${c}</div><div class="lbl">${g} yrs</div></div>`;});
+    html+='</div>';
+  }
+
+  html+=section('Status & Separation Analysis');
+  html+=flagTable('Active Status with Separation Date (Mismatch)',R.mismatch.map(r=>[r['Employee ID'],r['Name'],r['Date of Separation'],'orange']),['Employee ID','Name','Sep Date'],'No status mismatches found.');
+
+  html+=section('Tenure Analysis');
+  html+=flagTable('Long Tenure Employees (10+ years)',R.longTenure.map(r=>[r.id,r.name,r.doj,r.years+' yrs','blue']),['Employee ID','Name','DOJ','Tenure'],'No employees with 10+ years tenure.');
+  html+=flagTable('Recently Joined (last 90 days)',R.recentJoin.map(r=>[r.id,r.name,r.doj,'blue']),['Employee ID','Name','DOJ'],'No recent joiners.');
+
+  html+=section('Designation-wise Headcount');
+  html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">';
+  Object.entries(R.desigMap).forEach(([d,c])=>{html+=`<div class="kpi-card" style="min-width:120px"><div class="val" style="font-size:20px">${c}</div><div class="lbl">${d}</div></div>`;});
+  html+='</div>';
+
+  html+=section('Record Completeness (Bottom 10)');
+  html+=flagTable('',R.incompleteRows.map(r=>[r.id,r.name,r.pct+'%',r.pct<50?'red':'orange']),['Employee ID','Name','Completeness %'],'All records are 100% complete.');
+
+  res.innerHTML=html;
+}
+
+function exportExcel(){
+  if(!_lastResults){alert('No data to export.');return;}
+  const R=_lastResults;
+  const wb=XLSX.utils.book_new();
+
+  function addSheet(name,headers,data){
+    if(!data||data.length===0){
+      const ws=XLSX.utils.aoa_to_sheet([headers,['No exceptions found']]);
+      styleHeader(ws,headers.length);
+      XLSX.utils.book_append_sheet(wb,ws,name.substring(0,31));
+      return;
+    }
+    const aoa=[headers,...data.map(r=>Array.isArray(r)?r.slice(0,headers.length):r)];
+    const ws=XLSX.utils.aoa_to_sheet(aoa);
+    styleHeader(ws,headers.length);
+    XLSX.utils.book_append_sheet(wb,ws,name.substring(0,31));
+  }
+
+  function styleHeader(ws,len){
+    for(let c=0;c<len;c++){
+      const cell=XLSX.utils.encode_cell({r:0,c});
+      if(!ws[cell])return;
+      ws[cell].s={fill:{fgColor:{rgb:'1A237E'}},font:{color:{rgb:'FFFFFF'},bold:true}};
+    }
+  }
+
+  // Summary sheet
+  const summaryData=[
+    ['MGSG Analytics — Employee Master Exception Report'],
+    ['Generated on',new Date().toLocaleDateString('en-IN')],
+    [''],
+    ['Metric','Count'],
+    ['Total Employees',R.total],
+    ['Active Employees',R.active],
+    ['Inactive Employees',R.inactive],
+    ['Total Flags Raised',R.totalFlags],
+    [''],
+    ['Category','Exceptions'],
+    ['Duplicate Employee IDs',R.dupEmpID.length],
+    ['Sequence Gaps',R.seqGaps.length],
+    ['Missing PAN',R.panMissing.length],
+    ['Invalid PAN',R.panInvalid.length],
+    ['Duplicate PAN',R.panDup.length],
+    ['Missing Aadhaar',R.aadhaarMissing.length],
+    ['Invalid Aadhaar',R.aadhaarInvalid.length],
+    ['Duplicate Aadhaar',R.aadhaarDup.length],
+    ['Missing Bank Account',R.bankMissing.length],
+    ['Duplicate Bank Account',R.bankDup.length],
+    ['Missing IFSC',R.ifscMissing.length],
+    ['Invalid IFSC',R.ifscInvalid.length],
+    ['Missing Email',R.emailMissing.length],
+    ['Missing Mobile',R.mobileMissing.length],
+    ['Invalid Mobile',R.mobileInvalid.length],
+    ['Missing PF Number',R.pfMissing.length],
+    ['Missing ESI',R.esiMissing.length],
+    ['Underage Employees',R.underage.length],
+    ['Status Mismatch',R.mismatch.length],
+  ];
+  const wsSummary=XLSX.utils.aoa_to_sheet(summaryData);
+  wsSummary['!cols']=[{wch:35},{wch:15}];
+  XLSX.utils.book_append_sheet(wb,wsSummary,'Summary');
+
+  addSheet('Dup EmpID',['Employee ID','Duplicate Names'],R.dupEmpID.map(id=>[id,R.rows.filter(r=>r['Employee ID']===id).map(r=>r['Name']).join(', ')]));
+  addSheet('Seq Gaps',['Missing Employee ID','Note'],R.seqGaps.map(g=>['EMP'+String(g).padStart(3,'0'),'Gap in sequence']));
+  addSheet('PAN Issues',['Employee ID','Name','PAN','Issue'],
+    [...R.panMissing.map(r=>[r['Employee ID'],r['Name'],'','Missing PAN']),
+     ...R.panInvalid.map(r=>[r['Employee ID'],r['Name'],r['PAN'],'Invalid Format']),
+     ...R.panDup.map(r=>[r[0],r[1],r[2],'Duplicate PAN'])]);
+  addSheet('Aadhaar Issues',['Employee ID','Name','Aadhaar','Issue'],
+    [...R.aadhaarMissing.map(r=>[r['Employee ID'],r['Name'],'','Missing']),
+     ...R.aadhaarInvalid.map(r=>[r['Employee ID'],r['Name'],r['Aadhaar'],'Invalid (not 12 digits)']),
+     ...R.aadhaarDup.map(r=>[r[0],r[1],r[2],'Duplicate'])]);
+  addSheet('Bank Issues',['Employee ID','Name','Field','Issue'],
+    [...R.bankMissing.map(r=>[r['Employee ID'],r['Name'],'Bank Account','Missing']),
+     ...R.bankDup.map(r=>[r[0],r[1],r[2],'Duplicate']),
+     ...R.ifscMissing.map(r=>[r['Employee ID'],r['Name'],'IFSC','Missing']),
+     ...R.ifscInvalid.map(r=>[r['Employee ID'],r['Name'],r['Bank IFSC Code'],'Invalid IFSC']),
+     ...R.bankNameMissing.map(r=>[r['Employee ID'],r['Name'],'Bank Name','Missing'])]);
+  addSheet('Contact Issues',['Employee ID','Name','Field','Value','Issue'],
+    [...R.emailMissing.map(r=>[r['Employee ID'],r['Name'],'Email','','Missing']),
+     ...R.emailInvalid.map(r=>[r['Employee ID'],r['Name'],'Email',r['Personal Email ID'],'Invalid Format']),
+     ...R.mobileMissing.map(r=>[r['Employee ID'],r['Name'],'Mobile','','Missing']),
+     ...R.mobileInvalid.map(r=>[r['Employee ID'],r['Name'],'Mobile',r['Personal Mobile Number'],'Invalid'])]);
+  addSheet('Compliance',['Employee ID','Name','Issue'],
+    [...R.pfMissing.map(r=>[r['Employee ID'],r['Name'],'Missing PF Number']),
+     ...R.esiMissing.map(r=>[r['Employee ID'],r['Name'],'Missing ESI'])]);
+  addSheet('Age & DOB',['Employee ID','Name','Date of Birth','Age','Flag'],
+    R.underage.map(r=>[r.id,r.name,r.dob,r.age,'UNDERAGE - Below 18']));
+  addSheet('Status Mismatch',['Employee ID','Name','Separation Date','Issue'],
+    R.mismatch.map(r=>[r['Employee ID'],r['Name'],r['Date of Separation'],'Active but has Separation Date']));
+  addSheet('Tenure',['Employee ID','Name','Date of Joining','Tenure (Years)','Flag'],
+    [...R.longTenure.map(r=>[r.id,r.name,r.doj,r.years,'Long Tenure (10+ yrs)']),
+     ...R.recentJoin.map(r=>[r.id,r.name,r.doj,'<3 months','Recent Joiner'])]);
+  addSheet('Completeness',['Employee ID','Name','Completeness %'],
+    R.incompleteRows.map(r=>[r.id,r.name,r.pct+'%']));
+
+  XLSX.writeFile(wb,'MGSG_Employee_Master_Exception_Report.xlsx');
+}
+
+function exportPDF(){
+  if(!_lastResults){alert('No data to export.');return;}
+  const R=_lastResults;
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const pw=210;const ml=15;const mr=15;const usable=pw-ml-mr;
+  let y=15;
+
+  function checkPage(needed=10){if(y+needed>285){doc.addPage();y=15;}}
+
+  // Header
+  doc.setFillColor(26,35,126);
+  doc.rect(0,0,210,28,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(16);doc.setFont('helvetica','bold');
+  doc.text('MGSG Analytics',ml,12);
+  doc.setFontSize(10);doc.setFont('helvetica','normal');
+  doc.text('Employee Master Exception Report',ml,19);
+  doc.text('Generated: '+new Date().toLocaleDateString('en-IN'),ml,25);
+  y=36;
+
+  // Summary KPIs
+  doc.setTextColor(30,30,30);
+  doc.setFontSize(12);doc.setFont('helvetica','bold');
+  doc.text('Executive Summary',ml,y);y+=7;
+
+  const kpis=[['Total Employees',R.total,'#1a237e'],['Active',R.active,'#2e7d32'],['Inactive',R.inactive,'#e65100'],['Total Flags',R.totalFlags,'#c62828']];
+  const kw=(usable-9)/4;
+  kpis.forEach(([lbl,val,col],i)=>{
+    const x=ml+i*(kw+3);
+    const [r,g,b]=hexToRgb(col);
+    doc.setFillColor(240,243,255);doc.roundedRect(x,y,kw,18,2,2,'F');
+    doc.setTextColor(r,g,b);doc.setFontSize(18);doc.setFont('helvetica','bold');
+    doc.text(String(val),x+kw/2,y+11,{align:'center'});
+    doc.setTextColor(100,100,100);doc.setFontSize(8);doc.setFont('helvetica','normal');
+    doc.text(lbl,x+kw/2,y+16,{align:'center'});
+  });
+  y+=24;
+
+  function sectionHeader(title){
+    checkPage(12);
+    doc.setFillColor(232,234,246);
+    doc.rect(ml,y,usable,7,'F');
+    doc.setTextColor(26,35,126);doc.setFontSize(10);doc.setFont('helvetica','bold');
+    doc.text(title,ml+2,y+5);
+    y+=10;doc.setTextColor(30,30,30);
+  }
+
+  function summaryLine(label,count,severity){
+    checkPage(7);
+    const col=severity==='critical'?[198,40,40]:severity==='warn'?[230,81,0]:[46,125,50];
+    doc.setFont('helvetica','normal');doc.setFontSize(9);
+    doc.setTextColor(50,50,50);doc.text(label,ml+2,y);
+    doc.setTextColor(...col);doc.setFont('helvetica','bold');
+    doc.text(String(count),ml+usable-10,y,{align:'right'});
+    doc.setDrawColor(220,220,220);doc.line(ml,y+1.5,ml+usable,y+1.5);
+    y+=7;
+  }
+
+  function detailTable(title,headers,data){
+    if(!data||data.length===0)return;
+    checkPage(20);
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(80,80,80);
+    doc.text(title,ml,y);y+=5;
+    const colW=usable/headers.length;
+    doc.setFillColor(200,210,240);
+    doc.rect(ml,y,usable,6,'F');
+    doc.setTextColor(26,35,126);doc.setFontSize(8);
+    headers.forEach((h,i)=>doc.text(h,ml+i*colW+2,y+4));
+    y+=6;
+    data.slice(0,20).forEach((row,ri)=>{
+      checkPage(7);
+      if(ri%2===0){doc.setFillColor(248,249,255);doc.rect(ml,y,usable,5.5,'F');}
+      doc.setTextColor(40,40,40);doc.setFont('helvetica','normal');doc.setFontSize(7.5);
+      const cells=Array.isArray(row)?row:Object.values(row);
+      cells.slice(0,headers.length).forEach((c,i)=>{
+        const txt=String(c||'').substring(0,28);
+        doc.text(txt,ml+i*colW+2,y+4);
+      });
+      y+=5.5;
+    });
+    if(data.length>20){doc.setFontSize(7);doc.setTextColor(150,150,150);doc.text(`...and ${data.length-20} more rows in Excel export`,ml,y+3);y+=6;}
+    y+=4;
+  }
+
+  sectionHeader('Employee ID Checks');
+  summaryLine('Duplicate Employee IDs',R.dupEmpID.length,'critical');
+  summaryLine('Missing in Sequence',R.seqGaps.length,'warn');
+  detailTable('Duplicate IDs',['Employee ID','Names'],R.dupEmpID.map(id=>[id,R.rows.filter(r=>r['Employee ID']===id).map(r=>r['Name']).join(', ')]));
+
+  sectionHeader('PAN Analysis');
+  summaryLine('Missing PAN',R.panMissing.length,'critical');
+  summaryLine('Invalid PAN Format',R.panInvalid.length,'warn');
+  summaryLine('Duplicate PAN',R.panDup.length,'critical');
+  detailTable('Invalid PAN',['Emp ID','Name','PAN Value'],R.panInvalid.map(r=>[r['Employee ID'],r['Name'],r['PAN']]));
+
+  sectionHeader('Aadhaar Analysis');
+  summaryLine('Missing Aadhaar',R.aadhaarMissing.length,'critical');
+  summaryLine('Invalid Aadhaar',R.aadhaarInvalid.length,'warn');
+  summaryLine('Duplicate Aadhaar',R.aadhaarDup.length,'critical');
+
+  sectionHeader('Bank Details');
+  summaryLine('Missing Bank Account',R.bankMissing.length,'critical');
+  summaryLine('Duplicate Bank Account',R.bankDup.length,'critical');
+  summaryLine('Missing / Invalid IFSC',R.ifscMissing.length+R.ifscInvalid.length,'warn');
+  summaryLine('Missing Bank Name',R.bankNameMissing.length,'warn');
+
+  sectionHeader('Contact Details');
+  summaryLine('Missing Email',R.emailMissing.length,'critical');
+  summaryLine('Invalid Email Format',R.emailInvalid.length,'warn');
+  summaryLine('Missing Mobile',R.mobileMissing.length,'critical');
+  summaryLine('Invalid Mobile',R.mobileInvalid.length,'warn');
+
+  sectionHeader('Statutory Compliance');
+  summaryLine('Missing PF Number',R.pfMissing.length,'critical');
+  summaryLine('Missing ESI',R.esiMissing.length,'critical');
+
+  sectionHeader('Age, Tenure & Status');
+  summaryLine('Underage Employees (< 18 yrs)',R.underage.length,'critical');
+  summaryLine('Status Mismatch (Active + Sep Date)',R.mismatch.length,'warn');
+  summaryLine('Long Tenure (10+ years)',R.longTenure.length,'ok');
+  summaryLine('Recent Joiners (last 90 days)',R.recentJoin.length,'ok');
+  detailTable('Underage Employees',['Emp ID','Name','DOB','Age'],R.underage.map(r=>[r.id,r.name,r.dob,r.age+' yrs']));
+
+  sectionHeader('Age Distribution');
+  checkPage(12);
+  const ageCols=Object.entries(R.ageGroups);
+  const aw=(usable-5*(ageCols.length-1))/ageCols.length;
+  ageCols.forEach(([g,c],i)=>{
+    const x=ml+i*(aw+5);
+    doc.setFillColor(232,234,246);doc.roundedRect(x,y,aw,14,2,2,'F');
+    doc.setTextColor(26,35,126);doc.setFontSize(14);doc.setFont('helvetica','bold');
+    doc.text(String(c),x+aw/2,y+8,{align:'center'});
+    doc.setTextColor(100,100,100);doc.setFontSize(7);doc.setFont('helvetica','normal');
+    doc.text(g+' yrs',x+aw/2,y+13,{align:'center'});
+  });
+  y+=20;
+
+  // Footer on all pages
+  const totalPages=doc.getNumberOfPages();
+  for(let p=1;p<=totalPages;p++){
+    doc.setPage(p);
+    doc.setFillColor(26,35,126);doc.rect(0,287,210,10,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(7);doc.setFont('helvetica','normal');
+    doc.text('MGSG Analytics — Confidential',ml,293);
+    doc.text(`Page ${p} of ${totalPages}`,210-mr,293,{align:'right'});
+  }
+
+  doc.save('MGSG_Employee_Master_Exception_Report.pdf');
+}
+
+function hexToRgb(hex){
+  const r=parseInt(hex.slice(1,3),16);const g=parseInt(hex.slice(3,5),16);const b=parseInt(hex.slice(5,7),16);
+  return[r,g,b];
+}
+
+function section(title){return`<div class="section-title">${title}</div>`;}
+
+function findDuplicates(arr){
+  const count={};arr.filter(v=>v).forEach(v=>count[v]=(count[v]||0)+1);
+  return Object.keys(count).filter(k=>count[k]>1);
+}
+
+function findDuplicatesWithRows(rows,field,idField){
+  const count={};
+  rows.filter(r=>r[field]).forEach(r=>count[r[field]]=(count[r[field]]||0)+1);
+  const result=[];const seen={};
+  rows.forEach(r=>{
+    const val=r[field];
+    if(val&&count[val]>1&&!seen[val]){
+      seen[val]=true;
+      rows.filter(x=>x[field]===val).forEach(m=>result.push([m[idField],m['Name'],val,'orange']));
+    }
+  });
+  return result;
+}
+
+function flagTable(title,data,cols,emptyMsg){
+  let html='';
+  if(title)html+=`<p style="font-size:13px;font-weight:600;color:#555;margin:8px 0 4px">${title}</p>`;
+  if(!data||data.length===0){html+=`<div class="no-issues">&#10003; ${emptyMsg}</div>`;return html;}
+  const last=data[0][data[0].length-1];
+  const isBadge=['red','orange','blue','green'].includes(last);
+  html+=`<table class="flag-table"><tr>${cols.map(c=>`<th>${c}</th>`).join('')}${isBadge?'<th>Flag</th>':''}</tr>`;
+  data.forEach(row=>{
+    const badge=isBadge?row[row.length-1]:'';
+    const cells=isBadge?row.slice(0,-1):row;
+    html+=`<tr>${cells.map(c=>`<td>${c}</td>`).join('')}${isBadge?`<td><span class="badge ${badge}">${badge==='red'?'Critical':badge==='orange'?'Warning':badge==='blue'?'Info':'OK'}</span></td>`:''}</tr>`;
+  });
+  html+='</table>';return html;
+}
+
+function countIssues(arrs){return arrs.reduce((s,a)=>s+(a?a.length:0),0);}
+
+function parseDate(s){
+  if(!s||!s.trim())return null;
+  const parts=s.trim().split(/[-\/]/);if(parts.length!==3)return null;
+  let d,m,y;
+  if(parts[2].length===4){[d,m,y]=parts;}else{[y,m,d]=parts;}
+  const dt=new Date(`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
+  return isNaN(dt)?null:dt;
+}
+function calcAge(dob,today){
+  let age=today.getFullYear()-dob.getFullYear();
+  const m=today.getMonth()-dob.getMonth();
+  if(m<0||(m===0&&today.getDate()<dob.getDate()))age--;
+  return age;
+}
+</script>
+</body>
+</html>
